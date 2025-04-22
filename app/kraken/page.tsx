@@ -22,12 +22,14 @@ import {
   DataGrid, 
   GridColDef,
   GridFilterModel,
-  GridFilterInputMultipleValue
+  GridFilterOperator,
+  getGridStringOperators
 } from '@mui/x-data-grid';
 import { useTheme } from '@mui/material/styles';
 import Papa from 'papaparse';
 
 interface LedgerEntry {
+  id: number;
   txid: string;
   refid: string;
   time: string;
@@ -47,6 +49,35 @@ interface AggregatedData {
   fee: number;
 }
 
+const MultiSelectOperator: GridFilterOperator = {
+  label: 'is any of',
+  value: 'isAnyOf',
+  getApplyFilterFn: (filterItem) => {
+    if (!filterItem.value || !Array.isArray(filterItem.value) || filterItem.value.length === 0) {
+      return null;
+    }
+    return (params) => {
+      return filterItem.value.includes(params.value);
+    };
+  },
+  InputComponent: ({ item, applyValue }) => {
+    return (
+      <Autocomplete
+        multiple
+        options={[]}
+        freeSolo
+        renderInput={(params) => (
+          <TextField {...params} variant="standard" label="Values" />
+        )}
+        onChange={(event, newValue) => {
+          applyValue({ ...item, value: newValue });
+        }}
+        value={item.value || []}
+      />
+    );
+  }
+};
+
 export default function KrakenPage() {
   const theme = useTheme();
   const [ledgerData, setLedgerData] = useState<LedgerEntry[]>([]);
@@ -61,19 +92,34 @@ export default function KrakenPage() {
       field: 'time', 
       headerName: 'Time', 
       flex: 1,
-      filterable: true 
+      filterOperators: [
+        ...getGridStringOperators().filter(operator => 
+          ['contains', 'equals', 'startsWith', 'endsWith'].includes(operator.value)
+        ),
+        MultiSelectOperator
+      ]
     },
     { 
       field: 'type', 
       headerName: 'Type', 
       flex: 1,
-      filterable: true 
+      filterOperators: [
+        ...getGridStringOperators().filter(operator => 
+          ['equals'].includes(operator.value)
+        ),
+        MultiSelectOperator
+      ]
     },
     { 
       field: 'asset', 
       headerName: 'Asset', 
       flex: 1,
-      filterable: true 
+      filterOperators: [
+        ...getGridStringOperators().filter(operator => 
+          ['equals'].includes(operator.value)
+        ),
+        MultiSelectOperator
+      ]
     },
     { 
       field: 'amount', 
@@ -131,7 +177,7 @@ export default function KrakenPage() {
     if (file) {
       Papa.parse(file, {
         complete: (results) => {
-          const data = results.data as LedgerEntry[];
+          const data = results.data as Omit<LedgerEntry, 'id'>[];
           const cleanData = data
             .filter(entry => entry.txid && entry.time && entry.type)
             .map((entry, index) => ({
@@ -148,25 +194,6 @@ export default function KrakenPage() {
 
   const handleImportClick = () => {
     fileInputRef.current?.click();
-  };
-
-  const CustomFilterInputMultipleValue = (props: any) => {
-    const { item, applyValue, ...others } = props;
-    return (
-      <Autocomplete
-        multiple
-        options={Array.from(new Set(ledgerData.map(row => row[item.field])))}
-        freeSolo
-        renderInput={(params) => (
-          <TextField {...params} variant="standard" label={item.field} />
-        )}
-        onChange={(event, newValue) => {
-          applyValue({ ...item, value: newValue });
-        }}
-        value={item.value || []}
-        {...others}
-      />
-    );
   };
 
   const AggregatedTable = ({ data, title }: { data: AggregatedData[], title: string }) => (
@@ -262,18 +289,6 @@ export default function KrakenPage() {
                 pageSizeOptions={[10, 25, 50, 100]}
                 disableRowSelectionOnClick
                 filterMode="client"
-                slots={{
-                  filterInputMultipleValue: CustomFilterInputMultipleValue
-                }}
-                slotProps={{
-                  panel: {
-                    sx: {
-                      '& .MuiDataGrid-filterForm': {
-                        alignItems: 'flex-start',
-                      },
-                    },
-                  },
-                }}
               />
             </Box>
 
