@@ -6,10 +6,6 @@ import {
   Button, 
   Box,
   Input,
-  Select,
-  MenuItem,
-  Autocomplete,
-  TextField,
   Paper,
   Table,
   TableBody,
@@ -21,9 +17,7 @@ import {
 import { 
   DataGrid, 
   GridColDef,
-  GridFilterModel,
-  GridFilterOperator,
-  getGridStringOperators
+  GridFilterModel
 } from '@mui/x-data-grid';
 import { useTheme } from '@mui/material/styles';
 import Papa from 'papaparse';
@@ -49,35 +43,6 @@ interface AggregatedData {
   fee: number;
 }
 
-const MultiSelectOperator: GridFilterOperator = {
-  label: 'is any of',
-  value: 'isAnyOf',
-  getApplyFilterFn: (filterItem) => {
-    if (!filterItem.value || !Array.isArray(filterItem.value) || filterItem.value.length === 0) {
-      return null;
-    }
-    return (params) => {
-      return filterItem.value.includes(params.value);
-    };
-  },
-  InputComponent: ({ item, applyValue }) => {
-    return (
-      <Autocomplete
-        multiple
-        options={[]}
-        freeSolo
-        renderInput={(params) => (
-          <TextField {...params} variant="standard" label="Values" />
-        )}
-        onChange={(event, newValue) => {
-          applyValue({ ...item, value: newValue });
-        }}
-        value={item.value || []}
-      />
-    );
-  }
-};
-
 export default function KrakenPage() {
   const theme = useTheme();
   const [ledgerData, setLedgerData] = useState<LedgerEntry[]>([]);
@@ -92,34 +57,19 @@ export default function KrakenPage() {
       field: 'time', 
       headerName: 'Time', 
       flex: 1,
-      filterOperators: [
-        ...getGridStringOperators().filter(operator => 
-          ['contains', 'equals', 'startsWith', 'endsWith'].includes(operator.value)
-        ),
-        MultiSelectOperator
-      ]
+      filterable: true
     },
     { 
       field: 'type', 
       headerName: 'Type', 
       flex: 1,
-      filterOperators: [
-        ...getGridStringOperators().filter(operator => 
-          ['equals'].includes(operator.value)
-        ),
-        MultiSelectOperator
-      ]
+      filterable: true
     },
     { 
       field: 'asset', 
       headerName: 'Asset', 
       flex: 1,
-      filterOperators: [
-        ...getGridStringOperators().filter(operator => 
-          ['equals'].includes(operator.value)
-        ),
-        MultiSelectOperator
-      ]
+      filterable: true
     },
     { 
       field: 'amount', 
